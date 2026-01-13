@@ -17,8 +17,7 @@ jobs:
 
     steps:
       - name: Install build dependencies
-        # Install exhaustive list of packages required to build an ARM cross-compiler from scratch.
-        # Added 'gawk', 'libncurses-dev', and 'texinfo' which are mandatory for toolchain builds.
+        # Install all packages required for building both the ARM toolchain and KOReader.
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -58,8 +57,7 @@ jobs:
             libencode-perl
 
       - name: Checkout KOReader Source
-        # Fetching the main repository. 
-        # Note: If you have your own fork of 'koreader/koreader', change the repository name here.
+        # Clone the main repository to get the build system and Makefiles.
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
@@ -67,32 +65,43 @@ jobs:
           submodules: false
 
       - name: Configure Git for custom crengine fork
-        # Redirect the nested crengine submodule to use your personal fork.
+        # Global redirection ensures that even nested submodule updates 
+        # point to your personal crengine fork.
         run: |
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
       - name: Fetch third-party dependencies
-        # This initializes all submodules and applies the redirection for crengine.
+        # This initializes 'base' and other submodules. 
+        # Your fork of crengine will be pulled automatically due to 'insteadOf'.
         run: |
           make fetchthirdparty
 
+      - name: Cache PocketBook Toolchain
+        # Cache the toolchain directory to avoid rebuilding it for every commit.
+        # The cache is keyed by the target name and the 'base' submodule state.
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: base/toolchain/pocketbook-toolchain
+          key: ${{ runner.os }}-pb-toolchain-${{ hashFiles('base/.gitmodules') }}
+
       - name: Build PocketBook Toolchain
-        # This is the most time-consuming step. 
-        # We need to build the cross-compiler before we can build the app.
+        # Run toolchain compilation only if it's not found in the cache.
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
-          cd base && ./utils/get-rev.sh
-          make -C toolchain pocketbook
+          # We enter the toolchain directory and build the pocketbook target.
+          make -C base/toolchain pocketbook
 
       - name: Build KOReader for PocketBook
-        # Now that the compiler exists in base/toolchain, we can run the main build.
-        # We add the newly built toolchain to the PATH so the Makefile can find the compiler.
+        # Set the PATH to include the cross-compiler and build the app.
         run: |
           export PATH="$GITHUB_WORKSPACE/base/toolchain/pocketbook-toolchain/bin:$PATH"
+          # VERBOSE=1 helps to see the actual compiler calls in logs.
           make TARGET=pocketbook
 
       - name: Upload Artifact
-        # Package the resulting build for download.
+        # Store the resulting .zip or folder as a GitHub Action artifact.
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
