@@ -13,73 +13,68 @@ jobs:
 
     steps:
       - name: Install build dependencies
+        # Install all necessary packages for cross-compilation and KOReader build
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             automake \
             build-essential \
+            cmake \
+            curl \
+            fakeroot \
             fetchmail \
+            flex \
+            bison \
             gettext \
             git \
+            gperf \
+            libbz2-dev \
+            libcap-dev \
+            libglib2.0-dev \
+            libncurses5-dev \
+            libssl-dev \
             libtool \
             libtool-bin \
-            pkg-config \
             patch \
+            pkg-config \
+            python3-setuptools \
+            swig \
             unzip \
             wget \
             zip \
             zlib1g-dev \
-            libcap-dev \
-            cmake \
-            gperf \
-            bison \
-            flex \
-            libglib2.0-dev \
-            libncurses5-dev \
-            libssl-dev \
-            libbz2-dev \
-            libpython3-dev \
-            python3-setuptools \
-            swig
+            nasm \
+            scons \
+            g++-multilib
 
       - name: Checkout KOReader
         uses: actions/checkout@v4
         with:
-          # Fetch full history for correct versioning
+          # Fetch full history to allow 'git describe' to work for versioning
           fetch-depth: 0
-          # We don't fetch submodules here to manually control the crengine fork injection
+          # We will initialize submodules manually to inject the fork
           submodules: false
 
-      - name: Initialize and update koreader-base
+      - name: Configure Git to use custom crengine fork
+        # This globally redirects the standard crengine URL to your fork.
+        # It works recursively for all submodules without editing .gitmodules files.
         run: |
-          # The submodule name in .gitmodules is 'koreader-base' at path 'base'
-          git submodule update --init base
+          git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
 
-      - name: Redirect crengine to custom fork
+      - name: Initialize and update submodules
+        # This will fetch 'base' and then 'crengine' from your fork automatically
         run: |
-          # Enter the base directory where the second .gitmodules is located
-          cd base
-          # Replace the standard crengine URL with your fork
-          sed -i 's|url = https://github.com/koreader/crengine.git|url = https://github.com/reuerendo/crengine|' .gitmodules
-          # Sync configuration to register the new URL
-          git submodule sync --recursive
-          cd ..
-          # Final sync for the main repository
-          git submodule sync --recursive
+          git submodule update --init --recursive --depth 1
 
-      - name: Fetch all submodules
+      - name: Build KOReader for PocketBook
+        # TARGET=pocketbook triggers the specific logic in the Makefile
+        # This process includes building the cross-compilation toolchain
         run: |
-          # This target in Makefile handles recursive updates using the new URL
-          make fetchthirdparty
-
-      - name: Build for PocketBook
-        run: |
-          # Using the TARGET variable as defined in the Makefile logic
-          # This will include make/pocketbook.mk automatically
           make TARGET=pocketbook
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
+          # Matches the installation directory pattern defined in your Makefile
           path: koreader-pocketbook-*
