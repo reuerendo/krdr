@@ -31,7 +31,7 @@ jobs:
 
       - name: Download and Setup Toolchain
         run: |
-          wget -O toolchain.tar.xz https://github.com/koreader/koxtoolchain/releases/download/2025.01/x-tools.tar.xz
+          wget -O toolchain.tar.xz https://github.com/koreader/koxtoolchain/releases/download/2025.05/pocketbook.tar.gz
           tar -xf toolchain.tar.xz -C ~/
           echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
 
