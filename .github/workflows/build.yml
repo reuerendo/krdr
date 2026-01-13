@@ -1,0 +1,52 @@
+name: Build KOReader for PocketBook (Custom crengine)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Install host dependencies
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git devscripts build-essential ccache
+
+      # Step 2: Clone the main KOReader repository
+      - name: Clone KOReader repository
+        run: |
+          git clone --recursive https://github.com/koreader/koreader.git .
+
+      # Step 3: Modify the crengine source URL and Revision
+      - name: Swap crengine repository to custom fork
+        run: |
+          echo "Replacing default crengine URL with the fork..."
+          # Replace the official URL with your fork URL in the thirdparty Makefile
+          sed -i 's|https://github.com/koreader/crengine|https://github.com/reuerendo/crengine|g' base/Makefile.thirdparty
+          
+          # Force the build system to use the master branch of your fork 
+          # instead of a specific pinned commit hash
+          sed -i 's/CRENGINE_REV:=.*/CRENGINE_REV:=master/g' base/Makefile.thirdparty
+          
+          echo "Verification of the change:"
+          grep "CRENGINE_URL" base/Makefile.thirdparty
+          grep "CRENGINE_REV" base/Makefile.thirdparty
+
+      # Step 4: Build KOReader for PocketBook
+      # The 'pocketbook' target covers most modern PocketBook devices
+      - name: Build KOReader (PocketBook)
+        run: |
+          # The first run of kodev will pull the required Docker image 
+          # containing the PocketBook SDK/toolchain.
+          ./kodev build pocketbook
+
+      # Step 5: Upload the compiled ZIP package
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: koreader-pocketbook-custom
+          # PocketBook builds result in a ZIP file located in the 'dist' directory
+          path: ./dist/koreader-pocketbook-*.zip
+          if-no-files-found: error
