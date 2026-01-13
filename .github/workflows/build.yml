@@ -1,4 +1,4 @@
-name: Build KOReader for PocketBook (Custom crengine)
+name: Build KOReader for PocketBook (Deep Search Patch)
 
 on:
   workflow_dispatch:
@@ -8,64 +8,57 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # Step 1: Prepare the environment
+      # Step 1: Maximize disk space (KOReader builds are heavy)
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      # Step 2: Install host tools
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git devscripts build-essential ccache grep
+          sudo apt-get install -y git devscripts build-essential ccache grep xargs
 
-      # Step 2: Checkout the main repository (Shallow clone to save time)
+      # Step 3: Checkout with all submodules
       - name: Checkout KOReader
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
-          fetch-depth: 1
+          submodules: recursive
+          fetch-depth: 0
 
-      # Step 3: Manually initialize the 'base' submodule
-      # This is where the Makefile.thirdparty resides.
-      - name: Initialize koreader-base submodule
+      # Step 4: Search and replace crengine URL and Revision everywhere
+      - name: Patch crengine fork
         run: |
-          echo "Initializing the base submodule..."
-          git submodule update --init --depth 1 base
-
-      # Step 4: Locate and modify the crengine configuration
-      # We target base/Makefile.thirdparty specifically.
-      - name: Swap crengine repository to custom fork
-        run: |
-          # The file is located in the 'base' directory which is a submodule
-          CONFIG_FILE="base/Makefile.thirdparty"
+          echo "Searching for crengine URL in the entire project..."
           
-          if [ -f "$CONFIG_FILE" ]; then
-            echo "Found $CONFIG_FILE. Patching..."
-            
-            # 1. Replace the repository URL
-            sed -i 's|https://github.com/koreader/crengine|https://github.com/reuerendo/crengine|g' "$CONFIG_FILE"
-            
-            # 2. Change the Revision to master to pull your latest changes
-            # By default KOReader uses a specific git hash.
-            sed -i 's/CRENGINE_REV:=.*/CRENGINE_REV:=master/g' "$CONFIG_FILE"
-            
-            echo "Successfully patched. Current values:"
-            grep -E "CRENGINE_URL|CRENGINE_REV" "$CONFIG_FILE"
-          else
-            echo "ERROR: $CONFIG_FILE not found!"
-            echo "Listing contents of 'base' directory for debugging:"
-            ls -la base
-            exit 1
-          fi
+          # We search for the string and replace it in any file it appears
+          # This handles changes in directory structure automatically
+          grep -rl "github.com/koreader/crengine" . | xargs sed -i 's|github.com/koreader/crengine|github.com/reuerendo/crengine|g'
+          
+          # Also search for the revision variable. 
+          # It's usually CRENGINE_REV or CRENGINE_COMMIT.
+          # We force it to 'master' to use your latest changes.
+          grep -rl "CRENGINE_REV" . | xargs sed -i 's/CRENGINE_REV:=.*/CRENGINE_REV:=master/g' || true
+          
+          echo "Patching complete. Verifying changes..."
+          # Verify by searching again (should show your fork now)
+          grep -r "github.com/reuerendo/crengine" .
 
-      # Step 5: Build the PocketBook package
-      # This will take a significant amount of time (40-60 minutes)
+      # Step 5: Build for PocketBook
       - name: Build KOReader (PocketBook)
         run: |
-          # We use the 'pocketbook' target. 
-          # This command automatically handles Docker and toolchains.
+          # Increase Git buffer size for large submodules
+          git config --global http.postBuffer 524288000
           ./kodev build pocketbook
 
-      # Step 6: Upload the resulting installation package
+      # Step 6: Upload the resulting ZIP
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: koreader-pocketbook-custom-crengine
+          name: koreader-pocketbook-custom
           path: ./dist/koreader-pocketbook-*.zip
           if-no-files-found: error
