@@ -1,4 +1,4 @@
-name: Build KOReader for PocketBook (Deep Search Patch)
+name: Build KOReader for PocketBook (Custom crengine)
 
 on:
   workflow_dispatch:
@@ -8,54 +8,58 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # Step 1: Maximize disk space (KOReader builds are heavy)
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-
-      # Step 2: Install host tools
+      # Step 1: Install system dependencies
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git devscripts build-essential ccache grep xargs
+          sudo apt-get install -y git devscripts build-essential ccache
 
-      # Step 3: Checkout with all submodules
+      # Step 2: Checkout the main KOReader repository
       - name: Checkout KOReader
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
-          submodules: recursive
-          fetch-depth: 0
+          # We will initialize submodules manually to control the crengine source
+          fetch-depth: 1
 
-      # Step 4: Search and replace crengine URL and Revision everywhere
-      - name: Patch crengine fork
+      # Step 3: Patch .gitmodules in the 'base' directory
+      # This file defines the 'kpvcrlib/crengine' submodule 
+      - name: Patch crengine URL
         run: |
-          echo "Searching for crengine URL in the entire project..."
+          echo "Patching base/.gitmodules..."
+          # Update the submodule URL to point to your fork 
+          sed -i 's|https://github.com/koreader/crengine.git|https://github.com/reuerendo/crengine.git|g' base/.gitmodules
           
-          # We search for the string and replace it in any file it appears
-          # This handles changes in directory structure automatically
-          grep -rl "github.com/koreader/crengine" . | xargs sed -i 's|github.com/koreader/crengine|github.com/reuerendo/crengine|g'
+          # Sync the changes with git configuration
+          cd base
+          git submodule sync
+          cd ..
           
-          # Also search for the revision variable. 
-          # It's usually CRENGINE_REV or CRENGINE_COMMIT.
-          # We force it to 'master' to use your latest changes.
-          grep -rl "CRENGINE_REV" . | xargs sed -i 's/CRENGINE_REV:=.*/CRENGINE_REV:=master/g' || true
-          
-          echo "Patching complete. Verifying changes..."
-          # Verify by searching again (should show your fork now)
-          grep -r "github.com/reuerendo/crengine" .
+          echo "Verification of .gitmodules content:"
+          grep "url =" base/.gitmodules
 
-      # Step 5: Build for PocketBook
+      # Step 4: Initialize all submodules
+      # This will follow the new URL from .gitmodules
+      - name: Initialize submodules
+        run: |
+          git submodule update --init --recursive --depth 1
+
+      # Step 5: Force crengine to use the 'master' branch of your fork
+      # By default, git submodules pin a specific commit. We want your latest code.
+      - name: Switch crengine to master branch
+        run: |
+          cd base/thirdparty/kpvcrlib/crengine
+          git fetch origin master
+          git checkout master
+          cd ../../../..
+
+      # Step 6: Build the application for PocketBook
+      # The 'pocketbook' target handles the cross-compilation environment
       - name: Build KOReader (PocketBook)
         run: |
-          # Increase Git buffer size for large submodules
-          git config --global http.postBuffer 524288000
           ./kodev build pocketbook
 
-      # Step 6: Upload the resulting ZIP
+      # Step 7: Upload the finished ZIP package
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
