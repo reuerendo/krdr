@@ -17,8 +17,8 @@ jobs:
 
     steps:
       - name: Install build dependencies
-        # These packages are essential for building the cross-compilation toolchain 
-        # (GCC, Binutils, etc.) and KOReader itself on a clean Ubuntu runner.
+        # Install exhaustive list of packages required to build an ARM cross-compiler from scratch.
+        # Added 'gawk', 'libncurses-dev', and 'texinfo' which are mandatory for toolchain builds.
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -32,11 +32,14 @@ jobs:
             bison \
             gettext \
             git \
+            gawk \
             gperf \
+            help2man \
             libbz2-dev \
             libcap-dev \
             libglib2.0-dev \
             libncurses5-dev \
+            libncurses-dev \
             libssl-dev \
             libtool \
             libtool-bin \
@@ -44,6 +47,7 @@ jobs:
             pkg-config \
             python3-setuptools \
             swig \
+            texinfo \
             unzip \
             wget \
             zip \
@@ -51,16 +55,11 @@ jobs:
             nasm \
             scons \
             g++-multilib \
-            texinfo \
-            help2man \
-            gawk \
-            libncurses-dev \
             libencode-perl
 
       - name: Checkout KOReader Source
-        # Since your workspace was empty, we explicitly checkout the official KOReader repository.
-        # If you have your own fork of the main KOReader repo, change 'koreader/koreader' 
-        # to 'your-username/koreader'.
+        # Fetching the main repository. 
+        # Note: If you have your own fork of 'koreader/koreader', change the repository name here.
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
@@ -68,30 +67,33 @@ jobs:
           submodules: false
 
       - name: Configure Git for custom crengine fork
-        # This global configuration tells Git to redirect any request for the official 
-        # crengine repository to your personal fork. This works recursively for 
-        # all submodules, including the one located inside the 'base' directory.
+        # Redirect the nested crengine submodule to use your personal fork.
         run: |
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
       - name: Fetch third-party dependencies
-        # This command uses the Makefile logic to initialize and update all submodules.
-        # Because of the 'insteadOf' rule above, it will download your fork of crengine.
+        # This initializes all submodules and applies the redirection for crengine.
         run: |
           make fetchthirdparty
 
-      - name: Build for PocketBook
-        # TARGET=pocketbook starts the cross-compilation process.
-        # This will build the entire ARM toolchain from source first, 
-        # which usually takes between 40 to 90 minutes.
+      - name: Build PocketBook Toolchain
+        # This is the most time-consuming step. 
+        # We need to build the cross-compiler before we can build the app.
         run: |
+          cd base && ./utils/get-rev.sh
+          make -C toolchain pocketbook
+
+      - name: Build KOReader for PocketBook
+        # Now that the compiler exists in base/toolchain, we can run the main build.
+        # We add the newly built toolchain to the PATH so the Makefile can find the compiler.
+        run: |
+          export PATH="$GITHUB_WORKSPACE/base/toolchain/pocketbook-toolchain/bin:$PATH"
           make TARGET=pocketbook
 
       - name: Upload Artifact
-        # This step saves the resulting build as a downloadable file in GitHub Actions.
+        # Package the resulting build for download.
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
-          # The resulting folder name pattern based on KOReader's Makefile.
           path: koreader-pocketbook-*
