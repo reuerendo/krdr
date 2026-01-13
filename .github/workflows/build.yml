@@ -8,60 +8,64 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # Step 1: Install essential host tools
+      # Step 1: Prepare the environment
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y git devscripts build-essential ccache grep
 
-      # Step 2: Checkout the main repository with all submodules
-      # Using submodules: recursive is critical for KOReader
+      # Step 2: Checkout the main repository (Shallow clone to save time)
       - name: Checkout KOReader
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
-          submodules: recursive
-          fetch-depth: 0
+          fetch-depth: 1
 
-      # Step 3: Dynamically find and modify the crengine configuration
-      # This approach is safer than hardcoding paths
+      # Step 3: Manually initialize the 'base' submodule
+      # This is where the Makefile.thirdparty resides.
+      - name: Initialize koreader-base submodule
+        run: |
+          echo "Initializing the base submodule..."
+          git submodule update --init --depth 1 base
+
+      # Step 4: Locate and modify the crengine configuration
+      # We target base/Makefile.thirdparty specifically.
       - name: Swap crengine repository to custom fork
         run: |
-          echo "Searching for the file containing CRENGINE_URL..."
+          # The file is located in the 'base' directory which is a submodule
+          CONFIG_FILE="base/Makefile.thirdparty"
           
-          # Find the file that defines the crengine URL (usually base/Makefile.thirdparty)
-          TARGET_FILE=$(grep -rl "CRENGINE_URL" . | head -n 1)
-          
-          if [ -n "$TARGET_FILE" ]; then
-            echo "Found configuration file at: $TARGET_FILE"
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "Found $CONFIG_FILE. Patching..."
             
-            # Replace the official repository with your fork
-            sed -i 's|https://github.com/koreader/crengine|https://github.com/reuerendo/crengine|g' "$TARGET_FILE"
+            # 1. Replace the repository URL
+            sed -i 's|https://github.com/koreader/crengine|https://github.com/reuerendo/crengine|g' "$CONFIG_FILE"
             
-            # Force the build system to use the master branch of your fork
-            # This ensures your latest changes are included
-            sed -i 's/CRENGINE_REV:=.*/CRENGINE_REV:=master/g' "$TARGET_FILE"
+            # 2. Change the Revision to master to pull your latest changes
+            # By default KOReader uses a specific git hash.
+            sed -i 's/CRENGINE_REV:=.*/CRENGINE_REV:=master/g' "$CONFIG_FILE"
             
-            echo "Verification of the changes in $TARGET_FILE:"
-            grep "CRENGINE_URL" "$TARGET_FILE"
-            grep "CRENGINE_REV" "$TARGET_FILE"
+            echo "Successfully patched. Current values:"
+            grep -E "CRENGINE_URL|CRENGINE_REV" "$CONFIG_FILE"
           else
-            echo "Error: Could not find any file containing CRENGINE_URL"
+            echo "ERROR: $CONFIG_FILE not found!"
+            echo "Listing contents of 'base' directory for debugging:"
+            ls -la base
             exit 1
           fi
 
-      # Step 4: Run the build process using the kodev tool
+      # Step 5: Build the PocketBook package
+      # This will take a significant amount of time (40-60 minutes)
       - name: Build KOReader (PocketBook)
         run: |
-          # The 'pocketbook' target triggers the cross-compilation for PB devices.
-          # This process runs inside a specialized Docker container.
+          # We use the 'pocketbook' target. 
+          # This command automatically handles Docker and toolchains.
           ./kodev build pocketbook
 
-      # Step 5: Archive the resulting ZIP file
+      # Step 6: Upload the resulting installation package
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: koreader-pocketbook-custom
-          # The build result is placed in the 'dist' directory
+          name: koreader-pocketbook-custom-crengine
           path: ./dist/koreader-pocketbook-*.zip
           if-no-files-found: error
