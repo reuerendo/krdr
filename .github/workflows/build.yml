@@ -18,8 +18,6 @@ jobs:
     steps:
 
       - name: Checkout KOReader Source
-        # Clone the main KOReader repository.
-        # Using 'koreader/koreader' as the source for the build.
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
@@ -27,31 +25,23 @@ jobs:
           submodules: false
 
       - name: Configure Git for custom crengine fork
-        # Redirect all crengine submodule requests to your personal fork.
-        # This will be applied during 'make fetchthirdparty'.
         run: |
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
       - name: Fetch third-party dependencies
-        # Initialize submodules including 'koreader-base' and your 'crengine' fork.
-        # This is done outside Docker to avoid permission issues with git config.
         run: |
           make fetchthirdparty
 
       - name: Build KOReader for PocketBook
-        # Use Docker image with precompiled toolchain instead of building from scratch.
-        # Building PocketBook toolchain has known issues with glibc compilation.
-        # The Docker image is the same one used for official KOReader nightly builds.
         run: |
           docker run --rm \
             -v $(pwd):/home/ko/build \
             -w /home/ko/build \
-            koreader/kopb:0.2.0 \
-            bash -c "make TARGET=pocketbook"
+            ghcr.io/koreader/koxtoolchain:pocketbook-latest \
+            bash -c "source ~/.bashrc && make TARGET=pocketbook"
 
       - name: Upload Artifact
-        # Upload the compiled build as an artifact.
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
