@@ -53,6 +53,26 @@ jobs:
           restore-keys: |
             koreader-thirdparty-
 
+      - name: Cache koreader-base build artifacts
+        id: cache-base
+        uses: actions/cache@v4
+        with:
+          path: |
+            base/build/arm-pocketbook-linux-gnueabi
+          key: koreader-base-pocketbook-${{ hashFiles('base/**/*.c', 'base/**/*.cpp', 'base/**/*.h', 'base/**/*.lua', 'base/Makefile*', '!base/thirdparty/kpvcrlib/crengine/**') }}
+          restore-keys: |
+            koreader-base-pocketbook-
+
+      - name: Cache build compilation cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ccache
+            ~/.cache/ccache
+          key: koreader-ccache-pocketbook-${{ github.sha }}
+          restore-keys: |
+            koreader-ccache-pocketbook-
+
       - name: Fetch third-party dependencies with retry
         if: steps.cache-thirdparty.outputs.cache-hit != 'true'
         uses: nick-fields/retry@v3
@@ -78,5 +98,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
-          path: koreader-pocketbook-arm-pocketbook-linux-gnueabi-*.zip
+          path: koreader-pocketbook-*.zip
           if-no-files-found: error
