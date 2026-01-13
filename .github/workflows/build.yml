@@ -1,68 +1,78 @@
-name: Build KOReader for PocketBook (Custom crengine)
+name: Build KOReader for PocketBook
 
 on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-      # Step 1: Install system dependencies
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git devscripts build-essential ccache
+          sudo apt-get install -y \
+            automake \
+            build-essential \
+            fetchmail \
+            gettext \
+            git \
+            libtool \
+            libtool-bin \
+            pkg-config \
+            patch \
+            unzip \
+            wget \
+            zip \
+            zlib1g-dev \
+            libcap-dev \
+            cmake \
+            gperf \
+            bison \
+            flex \
+            libglib2.0-dev \
+            libncurses5-dev \
+            libssl-dev
 
-      # Step 2: Checkout the main KOReader repository
       - name: Checkout KOReader
         uses: actions/checkout@v4
         with:
-          repository: koreader/koreader
-          # We will initialize submodules manually to control the crengine source
-          fetch-depth: 1
+          fetch-depth: 0
 
-      # Step 3: Patch .gitmodules in the 'base' directory
-      # This file defines the 'kpvcrlib/crengine' submodule 
-      - name: Patch crengine URL
+      - name: Initialize base submodule
         run: |
-          echo "Patching base/.gitmodules..."
-          # Update the submodule URL to point to your fork 
-          sed -i 's|https://github.com/koreader/crengine.git|https://github.com/reuerendo/crengine.git|g' base/.gitmodules
-          
-          # Sync the changes with git configuration
+          # We need to initialize the 'base' submodule first to access its .gitmodules
+          git submodule update --init base
+
+      - name: Redirect crengine to custom fork
+        run: |
+          # Navigate to the base directory and change the crengine URL
           cd base
-          git submodule sync
+          sed -i 's|url = https://github.com/koreader/crengine.git|url = https://github.com/reuerendo/crengine|' .gitmodules
+          # Sync the submodule configuration
+          git submodule sync --recursive
           cd ..
-          
-          echo "Verification of .gitmodules content:"
-          grep "url =" base/.gitmodules
+          # Sync the main repository configuration
+          git submodule sync --recursive
 
-      # Step 4: Initialize all submodules
-      # This will follow the new URL from .gitmodules
-      - name: Initialize submodules
+      - name: Fetch all submodules
         run: |
-          git submodule update --init --recursive --depth 1
+          # Use the fetchthirdparty target from your Makefile to download everything
+          # This will now use your custom crengine URL due to the previous step
+          make fetchthirdparty
 
-      # Step 5: Force crengine to use the 'master' branch of your fork
-      # By default, git submodules pin a specific commit. We want your latest code.
-      - name: Switch crengine to master branch
+      - name: Build for PocketBook
         run: |
-          cd base/thirdparty/kpvcrlib/crengine
-          git fetch origin master
-          git checkout master
-          cd ../../../..
+          # Set the target to pocketbook as requested
+          # The Makefile will include make/pocketbook.mk automatically
+          make TARGET=pocketbook
 
-      # Step 6: Build the application for PocketBook
-      # The 'pocketbook' target handles the cross-compilation environment
-      - name: Build KOReader (PocketBook)
-        run: |
-          ./kodev build pocketbook
-
-      # Step 7: Upload the finished ZIP package
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: koreader-pocketbook-custom
-          path: ./dist/koreader-pocketbook-*.zip
-          if-no-files-found: error
+          name: koreader-pocketbook
+          path: koreader-pocketbook-*
