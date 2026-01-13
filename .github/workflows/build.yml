@@ -16,51 +16,10 @@ jobs:
         shell: bash
 
     steps:
-      - name: Install build dependencies
-        # Install all packages required by crosstool-NG and KOReader build system.
-        # These include tools for compiling GCC and handling PocketBook-specific resources.
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            automake \
-            build-essential \
-            cmake \
-            curl \
-            fakeroot \
-            fetchmail \
-            flex \
-            bison \
-            gettext \
-            git \
-            gawk \
-            gperf \
-            help2man \
-            libbz2-dev \
-            libcap-dev \
-            libglib2.0-dev \
-            libncurses5-dev \
-            libncurses-dev \
-            libssl-dev \
-            libtool \
-            libtool-bin \
-            patch \
-            pkg-config \
-            python3-setuptools \
-            swig \
-            texinfo \
-            unzip \
-            wget \
-            zip \
-            zlib1g-dev \
-            nasm \
-            scons \
-            g++-multilib \
-            libencode-perl \
-            libtool-bin
 
       - name: Checkout KOReader Source
-        # Cloning the main repository. 
-        # Using 'koreader/koreader' as the source for the build infrastructure.
+        # Clone the main KOReader repository.
+        # Using 'koreader/koreader' as the source for the build.
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
@@ -75,45 +34,24 @@ jobs:
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
       - name: Fetch third-party dependencies
-        # This initializes submodules, including 'koreader-base' and your 'crengine' fork.
+        # Initialize submodules including 'koreader-base' and your 'crengine' fork.
+        # This is done outside Docker to avoid permission issues with git config.
         run: |
           make fetchthirdparty
 
-      - name: Checkout koxtoolchain
-        # Clone the koxtoolchain repository which contains gen-tc.sh script.
-        uses: actions/checkout@v4
-        with:
-          repository: koreader/koxtoolchain
-          path: koxtoolchain
-
-      - name: Cache PocketBook Toolchain
-        # The gen-tc.sh script installs the toolchain into ~/x-tools/.
-        # Caching this directory saves about 60-90 minutes on subsequent runs.
-        id: cache-toolchain
-        uses: actions/cache@v4
-        with:
-          path: ~/x-tools/arm-pocketbook-linux-gnueabi
-          key: ${{ runner.os }}-pb-xtools-${{ hashFiles('koxtoolchain/gen-tc.sh') }}
-
-      - name: Build PocketBook Toolchain
-        # Build the compiler only if it's not restored from the cache.
-        # This step uses the script from koxtoolchain repository.
-        if: steps.cache-toolchain.outputs.cache-hit != 'true'
-        run: |
-          cd koxtoolchain
-          chmod +x gen-tc.sh
-          ./gen-tc.sh pocketbook
-
       - name: Build KOReader for PocketBook
-        # Add the cross-compiler to PATH and start the main build process.
+        # Use Docker image with precompiled toolchain instead of building from scratch.
+        # Building PocketBook toolchain has known issues with glibc compilation.
+        # The Docker image is the same one used for official KOReader nightly builds.
         run: |
-          export PATH="$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin:$PATH"
-          # Verify that the compiler is now visible
-          arm-pocketbook-linux-gnueabi-gcc --version
-          make TARGET=pocketbook
+          docker run --rm \
+            -v $(pwd):/home/ko/build \
+            -w /home/ko/build \
+            koreader/kopb:0.2.0 \
+            bash -c "make TARGET=pocketbook"
 
       - name: Upload Artifact
-        # Upload the final build for the user to download.
+        # Upload the compiled build as an artifact.
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
