@@ -36,39 +36,46 @@ jobs:
             flex \
             libglib2.0-dev \
             libncurses5-dev \
-            libssl-dev
+            libssl-dev \
+            libbz2-dev \
+            libpython3-dev \
+            python3-setuptools \
+            swig
 
       - name: Checkout KOReader
         uses: actions/checkout@v4
         with:
+          # Fetch full history for correct versioning
           fetch-depth: 0
+          # We don't fetch submodules here to manually control the crengine fork injection
+          submodules: false
 
-      - name: Initialize base submodule
+      - name: Initialize and update koreader-base
         run: |
-          # We need to initialize the 'base' submodule first to access its .gitmodules
+          # The submodule name in .gitmodules is 'koreader-base' at path 'base'
           git submodule update --init base
 
       - name: Redirect crengine to custom fork
         run: |
-          # Navigate to the base directory and change the crengine URL
+          # Enter the base directory where the second .gitmodules is located
           cd base
+          # Replace the standard crengine URL with your fork
           sed -i 's|url = https://github.com/koreader/crengine.git|url = https://github.com/reuerendo/crengine|' .gitmodules
-          # Sync the submodule configuration
+          # Sync configuration to register the new URL
           git submodule sync --recursive
           cd ..
-          # Sync the main repository configuration
+          # Final sync for the main repository
           git submodule sync --recursive
 
       - name: Fetch all submodules
         run: |
-          # Use the fetchthirdparty target from your Makefile to download everything
-          # This will now use your custom crengine URL due to the previous step
+          # This target in Makefile handles recursive updates using the new URL
           make fetchthirdparty
 
       - name: Build for PocketBook
         run: |
-          # Set the target to pocketbook as requested
-          # The Makefile will include make/pocketbook.mk automatically
+          # Using the TARGET variable as defined in the Makefile logic
+          # This will include make/pocketbook.mk automatically
           make TARGET=pocketbook
 
       - name: Upload Artifact
