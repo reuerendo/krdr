@@ -17,7 +17,8 @@ jobs:
 
     steps:
       - name: Install build dependencies
-        # Install all packages required for building both the ARM toolchain and KOReader.
+        # Install all packages required by crosstool-NG and KOReader build system.
+        # These include tools for compiling GCC and handling PocketBook-specific resources.
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -54,10 +55,12 @@ jobs:
             nasm \
             scons \
             g++-multilib \
-            libencode-perl
+            libencode-perl \
+            libtool-bin
 
       - name: Checkout KOReader Source
-        # Clone the main repository to get the build system and Makefiles.
+        # Cloning the main repository. 
+        # Using 'koreader/koreader' as the source for the build infrastructure.
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
@@ -65,43 +68,47 @@ jobs:
           submodules: false
 
       - name: Configure Git for custom crengine fork
-        # Global redirection ensures that even nested submodule updates 
-        # point to your personal crengine fork.
+        # Redirect all crengine submodule requests to your personal fork.
+        # This will be applied during 'make fetchthirdparty'.
         run: |
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
       - name: Fetch third-party dependencies
-        # This initializes 'base' and other submodules. 
-        # Your fork of crengine will be pulled automatically due to 'insteadOf'.
+        # This initializes submodules, including 'koreader-base' and your 'crengine' fork[cite: 8, 13].
         run: |
           make fetchthirdparty
 
       - name: Cache PocketBook Toolchain
-        # Cache the toolchain directory to avoid rebuilding it for every commit.
-        # The cache is keyed by the target name and the 'base' submodule state.
+        # The gen-tc.sh script installs the toolchain into ~/x-tools/.
+        # Caching this directory saves about 60-90 minutes on subsequent runs.
         id: cache-toolchain
         uses: actions/cache@v4
         with:
-          path: base/toolchain/pocketbook-toolchain
-          key: ${{ runner.os }}-pb-toolchain-${{ hashFiles('base/.gitmodules') }}
+          path: ~/x-tools/arm-pocketbook-linux-gnueabi
+          key: ${{ runner.os }}-pb-xtools-${{ hashFiles('base/toolchain/koxtoolchain/gen-tc.sh') }}
 
       - name: Build PocketBook Toolchain
-        # Run toolchain compilation only if it's not found in the cache.
+        # Build the compiler only if it's not restored from the cache.
+        # This step uses the script you provided.
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
-          # We enter the toolchain directory and build the pocketbook target.
-          make -C base/toolchain pocketbook
+          # Find the directory containing gen-tc.sh (usually in base/toolchain/koxtoolchain)
+          TC_PATH=$(find . -name gen-tc.sh -exec dirname {} \;)
+          cd "$TC_PATH"
+          chmod +x gen-tc.sh
+          ./gen-tc.sh pocketbook
 
       - name: Build KOReader for PocketBook
-        # Set the PATH to include the cross-compiler and build the app.
+        # Add the cross-compiler to PATH and start the main build process.
         run: |
-          export PATH="$GITHUB_WORKSPACE/base/toolchain/pocketbook-toolchain/bin:$PATH"
-          # VERBOSE=1 helps to see the actual compiler calls in logs.
+          export PATH="$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin:$PATH"
+          # Verify that the compiler is now visible
+          arm-pocketbook-linux-gnueabi-gcc --version
           make TARGET=pocketbook
 
       - name: Upload Artifact
-        # Store the resulting .zip or folder as a GitHub Action artifact.
+        # Upload the final build for the user to download.
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
