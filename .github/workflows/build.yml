@@ -29,17 +29,19 @@ jobs:
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
+      - name: Download and Setup Toolchain
+        run: |
+          wget -O toolchain.tar.xz https://github.com/koreader/koxtoolchain/releases/download/2025.01/x-tools.tar.xz
+          tar -xf toolchain.tar.xz -C ~/
+          echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
+
       - name: Fetch third-party dependencies
         run: |
           make fetchthirdparty
 
       - name: Build KOReader for PocketBook
         run: |
-          docker run --rm \
-            -v $(pwd):/home/ko/build \
-            -w /home/ko/build \
-            ghcr.io/koreader/koxtoolchain:pocketbook-latest \
-            bash -c "source ~/.bashrc && make TARGET=pocketbook"
+          make TARGET=pocketbook
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
