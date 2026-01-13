@@ -8,45 +8,55 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # Step 1: Install host dependencies
+      # Step 1: Install host dependencies needed for the build process
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y git devscripts build-essential ccache
 
-      # Step 2: Clone the main KOReader repository
-      - name: Clone KOReader repository
-        run: |
-          git clone --recursive https://github.com/koreader/koreader.git .
+      # Step 2: Checkout the KOReader repository with all submodules
+      # We use the official action instead of manual git clone for better reliability
+      - name: Checkout KOReader
+        uses: actions/checkout@v4
+        with:
+          repository: koreader/koreader
+          submodules: recursive
+          fetch-depth: 0
 
       # Step 3: Modify the crengine source URL and Revision
+      # We use 'base/Makefile.thirdparty' which is part of the 'koreader-base' submodule
       - name: Swap crengine repository to custom fork
         run: |
-          echo "Replacing default crengine URL with the fork..."
-          # Replace the official URL with your fork URL in the thirdparty Makefile
-          sed -i 's|https://github.com/koreader/crengine|https://github.com/reuerendo/crengine|g' base/Makefile.thirdparty
-          
-          # Force the build system to use the master branch of your fork 
-          # instead of a specific pinned commit hash
-          sed -i 's/CRENGINE_REV:=.*/CRENGINE_REV:=master/g' base/Makefile.thirdparty
-          
-          echo "Verification of the change:"
-          grep "CRENGINE_URL" base/Makefile.thirdparty
-          grep "CRENGINE_REV" base/Makefile.thirdparty
+          echo "Checking if file exists..."
+          if [ -f "base/Makefile.thirdparty" ]; then
+            echo "File found. Proceeding with replacement."
+            
+            # Replace the official URL with your fork URL
+            sed -i 's|https://github.com/koreader/crengine|https://github.com/reuerendo/crengine|g' base/Makefile.thirdparty
+            
+            # Force the build system to use the master branch of your fork
+            sed -i 's/CRENGINE_REV:=.*/CRENGINE_REV:=master/g' base/Makefile.thirdparty
+            
+            echo "Verification of the change:"
+            grep "CRENGINE_URL" base/Makefile.thirdparty
+            grep "CRENGINE_REV" base/Makefile.thirdparty
+          else
+            echo "Error: base/Makefile.thirdparty not found!"
+            # List files for debugging purposes
+            ls -R base | grep Makefile
+            exit 1
+          fi
 
       # Step 4: Build KOReader for PocketBook
-      # The 'pocketbook' target covers most modern PocketBook devices
       - name: Build KOReader (PocketBook)
         run: |
-          # The first run of kodev will pull the required Docker image 
-          # containing the PocketBook SDK/toolchain.
+          # This command triggers the Docker-based build process for PocketBook
           ./kodev build pocketbook
 
-      # Step 5: Upload the compiled ZIP package
+      # Step 5: Upload the compiled ZIP package as a GitHub artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook-custom
-          # PocketBook builds result in a ZIP file located in the 'dist' directory
           path: ./dist/koreader-pocketbook-*.zip
           if-no-files-found: error
