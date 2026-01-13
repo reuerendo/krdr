@@ -29,10 +29,17 @@ jobs:
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
+      - name: Install build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y autoconf automake build-essential ca-certificates cmake \
+            gcc-multilib gettext git libsdl2-2.0-0 libtool libtool-bin meson nasm \
+            ninja-build patch perl pkg-config unzip wget
+
       - name: Download and Setup Toolchain
         run: |
-          wget -O toolchain.tar.xz https://github.com/koreader/koxtoolchain/releases/download/2025.05/pocketbook.tar.gz
-          tar -xf toolchain.tar.xz -C ~/
+          wget -O toolchain.tar.gz https://github.com/koreader/koxtoolchain/releases/download/2025.05/pocketbook.tar.gz
+          tar -xf toolchain.tar.gz -C ~/
           echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
 
       - name: Fetch third-party dependencies
