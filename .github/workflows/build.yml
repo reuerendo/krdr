@@ -10,10 +10,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # Setting default shell to bash for consistency
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Install build dependencies
-        # Install all necessary packages for cross-compilation and KOReader build
+        # Install exhaustive list of packages required for cross-compiling toolchains
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -45,30 +50,46 @@ jobs:
             zlib1g-dev \
             nasm \
             scons \
-            g++-multilib
+            g++-multilib \
+            texinfo \
+            help2man
 
       - name: Checkout KOReader
         uses: actions/checkout@v4
         with:
-          # Fetch full history to allow 'git describe' to work for versioning
+          # Fetch all history for correct git describe versioning
           fetch-depth: 0
-          # We will initialize submodules manually to inject the fork
+          # We manage submodules manually to ensure fork replacement
           submodules: false
 
-      - name: Configure Git to use custom crengine fork
-        # This globally redirects the standard crengine URL to your fork.
-        # It works recursively for all submodules without editing .gitmodules files.
+      - name: Verify Makefile presence
+        # Check if Makefile actually exists in the root directory
+        run: |
+          if [ ! -f Makefile ]; then
+            echo "Error: Makefile not found in the current directory!"
+            ls -la
+            exit 1
+          fi
+
+      - name: Configure Git for custom crengine fork
+        # Globally redirect the original crengine URL to your personal fork.
+        # This will affect all recursive submodule updates.
         run: |
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
+          git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
-      - name: Initialize and update submodules
-        # This will fetch 'base' and then 'crengine' from your fork automatically
+      - name: Initialize submodules
+        # Recursive initialization will now use the redirected crengine URL
         run: |
           git submodule update --init --recursive --depth 1
 
-      - name: Build KOReader for PocketBook
-        # TARGET=pocketbook triggers the specific logic in the Makefile
-        # This process includes building the cross-compilation toolchain
+      - name: Fetch third-party dependencies
+        # Execute the fetchthirdparty target from your Makefile
+        run: |
+          make fetchthirdparty
+
+      - name: Build for PocketBook
+        # The TARGET variable triggers pocketbook-specific build logic
         run: |
           make TARGET=pocketbook
 
@@ -76,5 +97,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
-          # Matches the installation directory pattern defined in your Makefile
+          # The resulting directory pattern from the Makefile
           path: koreader-pocketbook-*
