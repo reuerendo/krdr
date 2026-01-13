@@ -42,13 +42,33 @@ jobs:
           tar -xf toolchain.tar.gz -C ~/
           echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
 
-      - name: Fetch third-party dependencies
-        run: |
-          make fetchthirdparty
+      - name: Cache third-party dependencies
+        id: cache-thirdparty
+        uses: actions/cache@v4
+        with:
+          path: |
+            base/build
+            base/thirdparty
+          key: koreader-thirdparty-${{ hashFiles('Makefile', 'base/Makefile', 'base/thirdparty/**/*.cmake') }}
+          restore-keys: |
+            koreader-thirdparty-
 
-      - name: Build KOReader for PocketBook
-        run: |
-          make TARGET=pocketbook
+      - name: Fetch third-party dependencies with retry
+        if: steps.cache-thirdparty.outputs.cache-hit != 'true'
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: make fetchthirdparty
+
+      - name: Build KOReader for PocketBook with retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 60
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: make TARGET=pocketbook
 
       - name: Create PocketBook update package
         run: |
