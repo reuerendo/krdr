@@ -50,8 +50,13 @@ jobs:
         run: |
           make TARGET=pocketbook
 
+      - name: Create PocketBook update package
+        run: |
+          make TARGET=pocketbook update
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: koreader-pocketbook
-          path: koreader-pocketbook-*
+          path: koreader-pocketbook-arm-pocketbook-linux-gnueabi-*.zip
+          if-no-files-found: error
