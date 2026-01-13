@@ -75,9 +75,16 @@ jobs:
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
 
       - name: Fetch third-party dependencies
-        # This initializes submodules, including 'koreader-base' and your 'crengine' fork[cite: 8, 13].
+        # This initializes submodules, including 'koreader-base' and your 'crengine' fork.
         run: |
           make fetchthirdparty
+
+      - name: Checkout koxtoolchain
+        # Clone the koxtoolchain repository which contains gen-tc.sh script.
+        uses: actions/checkout@v4
+        with:
+          repository: koreader/koxtoolchain
+          path: koxtoolchain
 
       - name: Cache PocketBook Toolchain
         # The gen-tc.sh script installs the toolchain into ~/x-tools/.
@@ -86,16 +93,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/x-tools/arm-pocketbook-linux-gnueabi
-          key: ${{ runner.os }}-pb-xtools-${{ hashFiles('base/toolchain/koxtoolchain/gen-tc.sh') }}
+          key: ${{ runner.os }}-pb-xtools-${{ hashFiles('koxtoolchain/gen-tc.sh') }}
 
       - name: Build PocketBook Toolchain
         # Build the compiler only if it's not restored from the cache.
-        # This step uses the script you provided.
+        # This step uses the script from koxtoolchain repository.
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
-          # Find the directory containing gen-tc.sh (usually in base/toolchain/koxtoolchain)
-          TC_PATH=$(find . -name gen-tc.sh -exec dirname {} \;)
-          cd "$TC_PATH"
+          cd koxtoolchain
           chmod +x gen-tc.sh
           ./gen-tc.sh pocketbook
 
