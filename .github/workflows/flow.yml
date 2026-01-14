@@ -44,9 +44,16 @@ jobs:
             libfribidi-dev \
             libharfbuzz-dev
       
-      - name: Replace crengine submodule with custom fork
+      - name: Configure custom crengine fork
         run: |
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
+      
+      - name: Fetch third-party dependencies
+        run: |
+          make fetchthirdparty
+      
+      - name: Switch crengine to custom branch
+        run: |
           cd base/crengine
           git remote set-url origin https://github.com/reuerendo/crengine
           git fetch origin
@@ -55,7 +62,6 @@ jobs:
       
       - name: Build KOReader for PocketBook
         run: |
-          make fetchthirdparty
           make pocketbook
       
       - name: Upload build artifacts
