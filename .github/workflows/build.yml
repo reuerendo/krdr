@@ -31,11 +31,12 @@ jobs:
       - name: Configure crengine to use test branch from custom fork
         run: |
           cd base
-          git submodule init
-          git config submodule.thirdparty/kpvcrlib/crengine.url https://github.com/reuerendo/crengine
-          git config submodule.thirdparty/kpvcrlib/crengine.branch test
-          git submodule sync thirdparty/kpvcrlib/crengine
-          git submodule update --init --recursive --remote thirdparty/kpvcrlib/crengine
+          git submodule update --init thirdparty/kpvcrlib/crengine
+          cd thirdparty/kpvcrlib/crengine
+          git remote set-url origin https://github.com/reuerendo/crengine
+          git fetch origin
+          git checkout test
+          git pull origin test
 
       - name: Verify crengine repository and branch
         run: |
