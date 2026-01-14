@@ -52,7 +52,7 @@ jobs:
       
       - name: Switch crengine to test branch
         run: |
-          cd base/crengine
+          cd base/thirdparty/kpvcrlib/crengine
           git remote set-url origin https://github.com/reuerendo/crengine
           git fetch origin test
           git checkout test
