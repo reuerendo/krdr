@@ -98,31 +98,32 @@ jobs:
 
       - name: Copy crengine source files to package for verification
         run: |
-          PACKAGE_DIR=$(ls -d koreader-pocketbook-arm-pocketbook-linux-gnueabi 2>/dev/null || echo "koreader-pocketbook-arm-pocketbook-linux-gnueabi")
+          PACKAGE_DIR="koreader-pocketbook-arm-pocketbook-linux-gnueabi"
           if [ -d "$PACKAGE_DIR" ]; then
             mkdir -p "$PACKAGE_DIR/crengine-src"
             cp -r base/thirdparty/kpvcrlib/crengine/crengine/src/* "$PACKAGE_DIR/crengine-src/" || true
             echo "crengine source files copied to $PACKAGE_DIR/crengine-src/"
             ls -la "$PACKAGE_DIR/crengine-src/" | head -20
+            echo "PACKAGE_DIR=$PACKAGE_DIR" >> $GITHUB_ENV
           else
-            echo "Package directory not found, searching..."
+            echo "Package directory not found"
             find . -maxdepth 2 -type d -name "koreader-*" -not -name "*.zip"
           fi
 
       - name: Recreate archive with crengine sources
         run: |
           ARCHIVE_NAME=$(ls koreader-pocketbook-*.zip 2>/dev/null | head -1)
-          if [ -f "$ARCHIVE_NAME" ]; then
+          if [ -f "$ARCHIVE_NAME" ] && [ -n "$PACKAGE_DIR" ]; then
             echo "Found archive: $ARCHIVE_NAME"
-            PACKAGE_DIR=$(unzip -l "$ARCHIVE_NAME" | grep -m1 "koreader-pocketbook" | awk '{print $4}' | cut -d'/' -f1)
-            echo "Package directory from archive: $PACKAGE_DIR"
+            echo "Package directory: $PACKAGE_DIR"
             rm "$ARCHIVE_NAME"
-            7z a -tzip "$ARCHIVE_NAME" "$PACKAGE_DIR"
+            7z a -tzip "$ARCHIVE_NAME" "$PACKAGE_DIR/"
             echo "Archive recreated: $ARCHIVE_NAME"
             ls -lh koreader-pocketbook-*.zip
           else
-            echo "Archive not found"
-            ls -la
+            echo "Archive or package directory not found"
+            echo "Archive: $ARCHIVE_NAME"
+            echo "Package dir: $PACKAGE_DIR"
           fi
 
       - name: Upload Artifact
