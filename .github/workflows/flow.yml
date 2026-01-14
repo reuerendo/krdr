@@ -1,4 +1,4 @@
-name: Build KOReader for PocketBook - new
+name: Build KOReader
 
 on:
   push:
@@ -50,9 +50,15 @@ jobs:
           git submodule sync --recursive
           git submodule update --depth 1 --jobs 3 --init --recursive
       
-      - name: Switch crengine to test branch
+      - name: Find and update crengine submodule
         run: |
-          cd base/thirdparty/kpvcrlib/crengine
+          CRENGINE_PATH=$(find . -type d -path "*/crengine" -not -path "./.git/*" | head -n 1)
+          if [ -z "$CRENGINE_PATH" ]; then
+            echo "Error: crengine directory not found"
+            exit 1
+          fi
+          echo "Found crengine at: $CRENGINE_PATH"
+          cd "$CRENGINE_PATH"
           git remote set-url origin https://github.com/reuerendo/crengine
           git fetch origin test
           git checkout test
