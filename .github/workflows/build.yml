@@ -42,7 +42,7 @@ jobs:
           sudo apt update
           sudo apt install -y autoconf automake build-essential ca-certificates cmake \
             gcc-multilib gettext git libsdl2-2.0-0 libtool libtool-bin meson nasm \
-            ninja-build patch perl pkg-config unzip wget
+            ninja-build patch perl pkg-config unzip wget ccache
 
       - name: Download and Setup Toolchain
         run: |
@@ -50,38 +50,28 @@ jobs:
           tar -xf toolchain.tar.gz -C ~/
           echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
 
-      - name: Cache third-party dependencies
-        id: cache-thirdparty
+      - name: Cache third-party source code
         uses: actions/cache@v4
         with:
-          path: |
-            base/thirdparty
-          key: koreader-thirdparty-${{ hashFiles('base/Makefile.third', 'base/thirdparty/**/*.cmake') }}
+          path: base/thirdparty
+          key: koreader-thirdparty-${{ hashFiles('base/Makefile.third') }}
           restore-keys: |
             koreader-thirdparty-
 
-      - name: Cache koreader-base build artifacts
-        id: cache-base
+      - name: Cache ccache compilation cache
         uses: actions/cache@v4
         with:
-          path: |
-            base/build/arm-pocketbook-linux-gnueabi
-          key: koreader-base-pocketbook-v2-${{ hashFiles('base/**/*.c', 'base/**/*.cpp', 'base/**/*.h', 'base/**/*.lua', 'base/Makefile*', '!base/thirdparty/kpvcrlib/crengine/**') }}-j2
+          path: ~/.ccache
+          key: koreader-ccache-pocketbook-${{ hashFiles('base/**/*.c', 'base/**/*.cpp', 'base/**/*.h') }}
           restore-keys: |
-            koreader-base-pocketbook-v2-
+            koreader-ccache-pocketbook-
 
-      - name: Cache build compilation cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.ccache
-            ~/.cache/ccache
-          key: koreader-ccache-pocketbook-v2-${{ github.sha }}
-          restore-keys: |
-            koreader-ccache-pocketbook-v2-
+      - name: Configure ccache
+        run: |
+          ccache --max-size=2G
+          ccache --set-config=compression=true
 
       - name: Fetch third-party dependencies with retry
-        if: steps.cache-thirdparty.outputs.cache-hit != 'true'
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 30
@@ -91,11 +81,16 @@ jobs:
 
       - name: Build KOReader for PocketBook with retry
         uses: nick-fields/retry@v3
+        env:
+          CCACHE: 1
         with:
           timeout_minutes: 60
           max_attempts: 3
           retry_wait_seconds: 30
           command: make -j2 TARGET=pocketbook
+
+      - name: Display ccache statistics
+        run: ccache --show-stats
 
       - name: Create PocketBook update package
         run: |
