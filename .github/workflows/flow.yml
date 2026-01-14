@@ -15,7 +15,8 @@ jobs:
       - name: Checkout KOReader repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          submodules: recursive
+          fetch-depth: 1
       
       - name: Install build dependencies
         run: |
@@ -41,25 +42,12 @@ jobs:
             unzip \
             wget
       
-      - name: Initialize and update submodules
-        run: |
-          git submodule sync --recursive
-          git submodule update --depth 1 --jobs 3 --init --recursive
-      
-      - name: List directory structure to find crengine
-        run: |
-          echo "Searching for crengine..."
-          find . -type d -name "crengine" -not -path "./.git/*" || true
-          echo "Full directory structure:"
-          find . -maxdepth 4 -type d | head -50
-      
-      - name: Find and replace crengine with custom fork
+      - name: Replace crengine with custom fork
         run: |
           CRENGINE_PATH=$(find . -type d -name "crengine" -not -path "./.git/*" | head -n 1)
           if [ -z "$CRENGINE_PATH" ]; then
-            echo "Error: crengine directory not found"
-            echo "Available directories:"
-            find . -maxdepth 5 -type d
+            echo "Error: crengine directory not found after submodule initialization"
+            find . -maxdepth 3 -type d
             exit 1
           fi
           echo "Found crengine at: $CRENGINE_PATH"
@@ -67,6 +55,7 @@ jobs:
           git remote set-url origin https://github.com/reuerendo/crengine
           git fetch origin test
           git checkout test
+          git pull origin test
       
       - name: Build KOReader for PocketBook
         run: |
