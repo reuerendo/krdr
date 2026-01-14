@@ -96,6 +96,33 @@ jobs:
         run: |
           make TARGET=pocketbook update
 
+      - name: Copy crengine source files to package for verification
+        run: |
+          PACKAGE_DIR=$(ls -d koreader-pocketbook-arm-pocketbook-linux-gnueabi 2>/dev/null || echo "koreader-pocketbook-arm-pocketbook-linux-gnueabi")
+          if [ -d "$PACKAGE_DIR" ]; then
+            mkdir -p "$PACKAGE_DIR/crengine-src"
+            cp -r base/thirdparty/kpvcrlib/crengine/crengine/src/* "$PACKAGE_DIR/crengine-src/" || true
+            echo "crengine source files copied to $PACKAGE_DIR/crengine-src/"
+            ls -la "$PACKAGE_DIR/crengine-src/" | head -20
+          else
+            echo "Package directory not found, searching..."
+            find . -maxdepth 2 -type d -name "koreader-*" -not -name "*.zip"
+          fi
+
+      - name: Recreate archive with crengine sources
+        run: |
+          PACKAGE_DIR=$(ls -d koreader-pocketbook-arm-pocketbook-linux-gnueabi 2>/dev/null || find . -maxdepth 2 -type d -name "koreader-pocketbook-*" -not -name "*.zip" | head -1)
+          if [ -d "$PACKAGE_DIR" ]; then
+            ARCHIVE_NAME=$(ls koreader-pocketbook-*.zip | head -1)
+            if [ -f "$ARCHIVE_NAME" ]; then
+              rm "$ARCHIVE_NAME"
+              cd $(dirname "$PACKAGE_DIR")
+              7z a -tzip "../$ARCHIVE_NAME" "$(basename $PACKAGE_DIR)"
+              cd ..
+              echo "Archive recreated: $ARCHIVE_NAME"
+            fi
+          fi
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
