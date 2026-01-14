@@ -41,20 +41,25 @@ jobs:
             unzip \
             wget
       
-      - name: Configure git to use custom crengine fork
-        run: |
-          git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
-      
       - name: Initialize and update submodules
         run: |
           git submodule sync --recursive
           git submodule update --depth 1 --jobs 3 --init --recursive
       
-      - name: Find and update crengine submodule
+      - name: List directory structure to find crengine
         run: |
-          CRENGINE_PATH=$(find . -type d -path "*/crengine" -not -path "./.git/*" | head -n 1)
+          echo "Searching for crengine..."
+          find . -type d -name "crengine" -not -path "./.git/*" || true
+          echo "Full directory structure:"
+          find . -maxdepth 4 -type d | head -50
+      
+      - name: Find and replace crengine with custom fork
+        run: |
+          CRENGINE_PATH=$(find . -type d -name "crengine" -not -path "./.git/*" | head -n 1)
           if [ -z "$CRENGINE_PATH" ]; then
             echo "Error: crengine directory not found"
+            echo "Available directories:"
+            find . -maxdepth 5 -type d
             exit 1
           fi
           echo "Found crengine at: $CRENGINE_PATH"
