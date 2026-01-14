@@ -111,16 +111,18 @@ jobs:
 
       - name: Recreate archive with crengine sources
         run: |
-          PACKAGE_DIR=$(ls -d koreader-pocketbook-arm-pocketbook-linux-gnueabi 2>/dev/null || find . -maxdepth 2 -type d -name "koreader-pocketbook-*" -not -name "*.zip" | head -1)
-          if [ -d "$PACKAGE_DIR" ]; then
-            ARCHIVE_NAME=$(ls koreader-pocketbook-*.zip | head -1)
-            if [ -f "$ARCHIVE_NAME" ]; then
-              rm "$ARCHIVE_NAME"
-              cd $(dirname "$PACKAGE_DIR")
-              7z a -tzip "../$ARCHIVE_NAME" "$(basename $PACKAGE_DIR)"
-              cd ..
-              echo "Archive recreated: $ARCHIVE_NAME"
-            fi
+          ARCHIVE_NAME=$(ls koreader-pocketbook-*.zip 2>/dev/null | head -1)
+          if [ -f "$ARCHIVE_NAME" ]; then
+            echo "Found archive: $ARCHIVE_NAME"
+            PACKAGE_DIR=$(unzip -l "$ARCHIVE_NAME" | grep -m1 "koreader-pocketbook" | awk '{print $4}' | cut -d'/' -f1)
+            echo "Package directory from archive: $PACKAGE_DIR"
+            rm "$ARCHIVE_NAME"
+            7z a -tzip "$ARCHIVE_NAME" "$PACKAGE_DIR"
+            echo "Archive recreated: $ARCHIVE_NAME"
+            ls -lh koreader-pocketbook-*.zip
+          else
+            echo "Archive not found"
+            ls -la
           fi
 
       - name: Upload Artifact
