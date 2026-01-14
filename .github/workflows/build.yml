@@ -92,13 +92,11 @@ jobs:
 
       - name: Build KOReader for PocketBook with retry
         uses: nick-fields/retry@v3
-        env:
-          MAKEFLAGS: -j2
         with:
           timeout_minutes: 60
           max_attempts: 3
           retry_wait_seconds: 30
-          command: make TARGET=pocketbook
+          command: make -j2 TARGET=pocketbook
 
       - name: Create PocketBook update package
         run: |
