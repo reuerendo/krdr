@@ -37,6 +37,21 @@ jobs:
           git submodule sync thirdparty/kpvcrlib/crengine
           git submodule update --init --recursive --remote thirdparty/kpvcrlib/crengine
 
+      - name: Verify crengine repository and branch
+        run: |
+          cd base/thirdparty/kpvcrlib/crengine
+          echo "=== crengine repository URL ==="
+          git remote -v
+          echo ""
+          echo "=== crengine current branch ==="
+          git branch -a
+          echo ""
+          echo "=== crengine current commit ==="
+          git log -1 --oneline --decorate
+          echo ""
+          echo "=== crengine last 5 commits ==="
+          git log -5 --oneline --decorate
+
       - name: Install build dependencies
         run: |
           sudo apt update
