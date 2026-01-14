@@ -55,9 +55,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            base/build
             base/thirdparty
-          key: koreader-thirdparty-${{ hashFiles('Makefile', 'base/Makefile', 'base/thirdparty/**/*.cmake') }}
+          key: koreader-thirdparty-${{ hashFiles('base/Makefile.third', 'base/thirdparty/**/*.cmake') }}
           restore-keys: |
             koreader-thirdparty-
 
@@ -67,9 +66,9 @@ jobs:
         with:
           path: |
             base/build/arm-pocketbook-linux-gnueabi
-          key: koreader-base-pocketbook-${{ hashFiles('base/**/*.c', 'base/**/*.cpp', 'base/**/*.h', 'base/**/*.lua', 'base/Makefile*', '!base/thirdparty/kpvcrlib/crengine/**') }}
+          key: koreader-base-pocketbook-v2-${{ hashFiles('base/**/*.c', 'base/**/*.cpp', 'base/**/*.h', 'base/**/*.lua', 'base/Makefile*', '!base/thirdparty/kpvcrlib/crengine/**') }}-j2
           restore-keys: |
-            koreader-base-pocketbook-
+            koreader-base-pocketbook-v2-
 
       - name: Cache build compilation cache
         uses: actions/cache@v4
@@ -77,9 +76,9 @@ jobs:
           path: |
             ~/.ccache
             ~/.cache/ccache
-          key: koreader-ccache-pocketbook-${{ github.sha }}
+          key: koreader-ccache-pocketbook-v2-${{ github.sha }}
           restore-keys: |
-            koreader-ccache-pocketbook-
+            koreader-ccache-pocketbook-v2-
 
       - name: Fetch third-party dependencies with retry
         if: steps.cache-thirdparty.outputs.cache-hit != 'true'
