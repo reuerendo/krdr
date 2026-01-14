@@ -24,18 +24,18 @@ jobs:
           fetch-depth: 0
           submodules: false
 
-      - name: Configure Git for custom crengine fork
+      - name: Initialize koreader-base submodule
         run: |
-          git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine.git"
-          git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
+          git submodule update --init base
       
-      - name: Override crengine submodule to use test branch
+      - name: Configure crengine to use test branch from custom fork
         run: |
+          cd base
           git submodule init
-          git config submodule.base/thirdparty/kpvcrlib/crengine.url https://github.com/reuerendo/crengine
-          git config submodule.base/thirdparty/kpvcrlib/crengine.branch test
-          git submodule sync
-          git submodule update --init --recursive --remote base/thirdparty/kpvcrlib/crengine
+          git config submodule.thirdparty/kpvcrlib/crengine.url https://github.com/reuerendo/crengine
+          git config submodule.thirdparty/kpvcrlib/crengine.branch test
+          git submodule sync thirdparty/kpvcrlib/crengine
+          git submodule update --init --recursive --remote thirdparty/kpvcrlib/crengine
 
       - name: Install build dependencies
         run: |
