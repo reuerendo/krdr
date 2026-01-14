@@ -15,50 +15,47 @@ jobs:
       - name: Checkout KOReader repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
       
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            git \
-            cmake \
-            curl \
-            wget \
-            unzip \
-            ninja-build \
-            libxml2-utils \
-            gettext \
-            gperf \
-            pkg-config \
-            patch \
             autoconf \
             automake \
+            build-essential \
+            ca-certificates \
+            cmake \
+            gcc-multilib \
+            gettext \
+            git \
+            libsdl2-2.0-0 \
             libtool \
-            zlib1g-dev \
-            libpng-dev \
-            libjpeg-dev \
-            libfreetype6-dev \
-            libfribidi-dev \
-            libharfbuzz-dev
+            libtool-bin \
+            meson \
+            nasm \
+            ninja-build \
+            patch \
+            perl \
+            pkg-config \
+            unzip \
+            wget
       
-      - name: Configure custom crengine fork
+      - name: Configure git to use custom crengine fork
         run: |
           git config --global url."https://github.com/reuerendo/crengine".insteadOf "https://github.com/koreader/crengine"
       
-      - name: Fetch third-party dependencies
+      - name: Initialize and update submodules
         run: |
-          make fetchthirdparty
+          git submodule sync --recursive
+          git submodule update --depth 1 --jobs 3 --init --recursive
       
-      - name: Switch crengine to custom branch
+      - name: Switch crengine to test branch
         run: |
           cd base/crengine
           git remote set-url origin https://github.com/reuerendo/crengine
-          git fetch origin
+          git fetch origin test
           git checkout test
-          git pull origin test
       
       - name: Build KOReader for PocketBook
         run: |
@@ -71,7 +68,7 @@ jobs:
           path: koreader-pocketbook-*.zip
           if-no-files-found: error
       
-      - name: Create release (on tags)
+      - name: Create release on tags
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
