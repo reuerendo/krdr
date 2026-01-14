@@ -27,7 +27,7 @@ jobs:
       - name: Initialize koreader-base submodule
         run: |
           git submodule update --init base
-      
+
       - name: Configure crengine to use test branch from custom fork
         run: |
           cd base
@@ -42,7 +42,7 @@ jobs:
           sudo apt update
           sudo apt install -y autoconf automake build-essential ca-certificates cmake \
             gcc-multilib gettext git libsdl2-2.0-0 libtool libtool-bin meson nasm \
-            ninja-build patch perl pkg-config unzip wget ccache
+            ninja-build patch perl pkg-config unzip wget
 
       - name: Download and Setup Toolchain
         run: |
@@ -58,19 +58,6 @@ jobs:
           restore-keys: |
             koreader-thirdparty-
 
-      - name: Cache ccache compilation cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.ccache
-          key: koreader-ccache-pocketbook-${{ hashFiles('base/**/*.c', 'base/**/*.cpp', 'base/**/*.h') }}
-          restore-keys: |
-            koreader-ccache-pocketbook-
-
-      - name: Configure ccache
-        run: |
-          ccache --max-size=2G
-          ccache --set-config=compression=true
-
       - name: Fetch third-party dependencies with retry
         uses: nick-fields/retry@v3
         with:
@@ -82,15 +69,12 @@ jobs:
       - name: Build KOReader for PocketBook with retry
         uses: nick-fields/retry@v3
         env:
-          CCACHE: 1
+          USE_NO_CCACHE: 1
         with:
           timeout_minutes: 60
           max_attempts: 3
           retry_wait_seconds: 30
           command: make -j2 TARGET=pocketbook
-
-      - name: Display ccache statistics
-        run: ccache --show-stats
 
       - name: Create PocketBook update package
         run: |
