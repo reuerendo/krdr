@@ -15,6 +15,7 @@ jobs:
       - name: Checkout KOReader repository
         uses: actions/checkout@v4
         with:
+          repository: koreader/koreader
           submodules: recursive
           fetch-depth: 1
       
@@ -42,12 +43,20 @@ jobs:
             unzip \
             wget
       
+      - name: Verify repository contents
+        run: |
+          echo "Repository structure:"
+          ls -la
+          echo "Looking for Makefile:"
+          test -f Makefile && echo "Makefile found" || echo "Makefile NOT found"
+      
       - name: Replace crengine with custom fork
         run: |
           CRENGINE_PATH=$(find . -type d -name "crengine" -not -path "./.git/*" | head -n 1)
           if [ -z "$CRENGINE_PATH" ]; then
-            echo "Error: crengine directory not found after submodule initialization"
-            find . -maxdepth 3 -type d
+            echo "Error: crengine directory not found"
+            echo "Available directories:"
+            find . -maxdepth 5 -type d
             exit 1
           fi
           echo "Found crengine at: $CRENGINE_PATH"
