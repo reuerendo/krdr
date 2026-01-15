@@ -62,8 +62,8 @@ jobs:
           echo "Found crengine at: $CRENGINE_PATH"
           cd "$CRENGINE_PATH"
           git remote set-url origin https://github.com/reuerendo/crengine
-          git fetch origin test
-          git checkout -b test origin/test
+          git fetch origin
+          git checkout -B test origin/test
       
       - name: Build KOReader for PocketBook
         run: |
