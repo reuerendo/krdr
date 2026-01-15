@@ -75,27 +75,31 @@ jobs:
         run: |
           echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
       
-      - name: Initialize submodules with custom crengine
+      - name: Initialize all submodules except crengine
         working-directory: ${{ github.workspace }}
         run: |
           git submodule init
+          git submodule update --init l10n
+          git submodule update --init platform/android/luajit-launcher
+          git submodule update --init platform/ubuntu-touch/ubuntu-touch-sdl
+          git submodule update --init resources/fonts
+          git submodule update --init test
           git submodule update --init base
           
           cd base
+          git submodule init
           
-          git config -f .gitmodules submodule.thirdparty/kpvcrlib/crengine.url https://github.com/reuerendo/crengine.git
-          git config -f .gitmodules submodule.thirdparty/kpvcrlib/crengine.branch test
+          for submodule in $(git config --file .gitmodules --get-regexp path | awk '{ print $2 }'); do
+            if [[ "$submodule" != "thirdparty/kpvcrlib/crengine" ]]; then
+              git submodule update --init --recursive "$submodule"
+            fi
+          done
           
-          git submodule sync thirdparty/kpvcrlib/crengine
           git submodule update --init thirdparty/kpvcrlib/crengine
-          
           cd thirdparty/kpvcrlib/crengine
           git remote set-url origin https://github.com/reuerendo/crengine.git
           git fetch origin test
           git checkout test
-          
-          cd ${{ github.workspace }}
-          git submodule update --init --recursive
       
       - name: Build KOReader for PocketBook
         run: |
