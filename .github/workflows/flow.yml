@@ -83,7 +83,7 @@ jobs:
           git submodule update --init platform/android/luajit-launcher
           git submodule update --init platform/ubuntu-touch/ubuntu-touch-sdl
           git submodule update --init resources/fonts
-          git submodule update --init test-branch
+          git submodule update --init test
           git submodule update --init base
           
           cd base
