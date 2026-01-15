@@ -34,6 +34,7 @@ jobs:
             libsdl2-2.0-0 \
             libtool \
             libtool-bin \
+            luarocks \
             meson \
             nasm \
             ninja-build \
@@ -43,42 +44,29 @@ jobs:
             unzip \
             wget
       
-      - name: Verify repository contents
-        run: |
-          echo "Repository structure:"
-          ls -la
-          echo "Looking for Makefile:"
-          test -f Makefile && echo "Makefile found" || echo "Makefile NOT found"
-      
       - name: Replace crengine with custom fork
         run: |
           CRENGINE_PATH=$(find . -type d -name "crengine" -not -path "./.git/*" | head -n 1)
           if [ -z "$CRENGINE_PATH" ]; then
             echo "Error: crengine directory not found"
-            echo "Available directories:"
-            find . -maxdepth 5 -type d
             exit 1
           fi
           echo "Found crengine at: $CRENGINE_PATH"
           cd "$CRENGINE_PATH"
           echo "Current remotes:"
           git remote -v
-          echo "Changing remote URL..."
           git remote set-url origin https://github.com/reuerendo/crengine
-          echo "New remotes:"
-          git remote -v
-          echo "Fetching all branches..."
+          echo "Fetching custom fork..."
           git fetch origin
-          echo "Available remote branches:"
-          git branch -r
           echo "Checking out test branch..."
           git checkout FETCH_HEAD
           git branch -D test 2>/dev/null || true
           git checkout -b test
+          echo "Successfully switched to test branch from custom fork"
       
       - name: Build KOReader for PocketBook
         run: |
-          make pocketbook
+          ./kodev release pocketbook
       
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
