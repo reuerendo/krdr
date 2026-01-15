@@ -1,4 +1,4 @@
-name: Build KOReader for PocketBook
+name: Build KOReader for PocketBook (Alternative Method)
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: koreader/koreader
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
       
       - name: Install build dependencies
@@ -75,22 +75,25 @@ jobs:
         run: |
           echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
       
-      - name: Replace crengine with custom fork
+      - name: Initialize submodules with custom crengine
         working-directory: ${{ github.workspace }}
         run: |
-          CRENGINE_PATH=$(find . -type d -name "crengine" -not -path "./.git/*" | head -n 1)
-          if [ -z "$CRENGINE_PATH" ]; then
-            echo "Error: crengine directory not found"
-            exit 1
-          fi
-          echo "Found crengine at: $CRENGINE_PATH"
-          cd "$CRENGINE_PATH"
-          git remote set-url origin https://github.com/reuerendo/crengine
-          git fetch origin
-          git checkout FETCH_HEAD
-          git branch -D test 2>/dev/null || true
-          git checkout -b test
-          echo "Successfully switched to test branch from custom fork"
+          git submodule init
+          git submodule update --init base
+          
+          cd base
+          
+          git config -f .gitmodules submodule.thirdparty/kpvcrlib/crengine.url https://github.com/reuerendo/crengine.git
+          git config -f .gitmodules submodule.thirdparty/kpvcrlib/crengine.branch test
+          
+          git submodule sync thirdparty/kpvcrlib/crengine
+          git submodule update --init --remote thirdparty/kpvcrlib/crengine
+          
+          cd thirdparty/kpvcrlib/crengine
+          git checkout test
+          
+          cd ${{ github.workspace }}
+          git submodule update --init --recursive
       
       - name: Build KOReader for PocketBook
         run: |
