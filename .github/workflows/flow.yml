@@ -52,17 +52,15 @@ jobs:
             unzip \
             wget
       
-      - name: Clone and build PocketBook toolchain
+      - name: Download and install PocketBook toolchain
         run: |
           cd $HOME
-          git clone https://github.com/koreader/koxtoolchain.git
-          cd koxtoolchain
-          ./gen-tc.sh pocketbook
+          wget https://github.com/koreader/koxtoolchain/releases/download/2025.05/pocketbook.tar.gz
+          tar -xzf pocketbook.tar.gz
       
       - name: Setup toolchain environment
         run: |
           echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
-          echo "PATH=$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin:$PATH" >> $GITHUB_ENV
       
       - name: Replace crengine with custom fork
         working-directory: ${{ github.workspace }}
