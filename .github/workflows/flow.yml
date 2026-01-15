@@ -83,7 +83,7 @@ jobs:
           git submodule update --init platform/android/luajit-launcher
           git submodule update --init platform/ubuntu-touch/ubuntu-touch-sdl
           git submodule update --init resources/fonts
-          git submodule update --init test
+          git submodule update --init test-branch
           git submodule update --init base
           
           cd base
@@ -98,8 +98,8 @@ jobs:
           git submodule update --init thirdparty/kpvcrlib/crengine
           cd thirdparty/kpvcrlib/crengine
           git remote set-url origin https://github.com/reuerendo/crengine.git
-          git fetch origin test
-          git checkout test
+          git fetch origin test-branch
+          git checkout test-branch
       
       - name: Build KOReader for PocketBook
         run: |
