@@ -25,12 +25,19 @@ jobs:
           sudo apt-get install -y \
             autoconf \
             automake \
+            bison \
             build-essential \
             ca-certificates \
             cmake \
-            gcc-multilib \
+            curl \
+            file \
+            flex \
+            gawk \
             gettext \
             git \
+            gperf \
+            help2man \
+            libncurses-dev \
             libsdl2-2.0-0 \
             libtool \
             libtool-bin \
@@ -41,10 +48,24 @@ jobs:
             patch \
             perl \
             pkg-config \
+            texinfo \
             unzip \
             wget
       
+      - name: Clone and build PocketBook toolchain
+        run: |
+          cd $HOME
+          git clone https://github.com/koreader/koxtoolchain.git
+          cd koxtoolchain
+          ./gen-tc.sh pocketbook
+      
+      - name: Setup toolchain environment
+        run: |
+          echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
+          echo "PATH=$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin:$PATH" >> $GITHUB_ENV
+      
       - name: Replace crengine with custom fork
+        working-directory: ${{ github.workspace }}
         run: |
           CRENGINE_PATH=$(find . -type d -name "crengine" -not -path "./.git/*" | head -n 1)
           if [ -z "$CRENGINE_PATH" ]; then
@@ -53,12 +74,8 @@ jobs:
           fi
           echo "Found crengine at: $CRENGINE_PATH"
           cd "$CRENGINE_PATH"
-          echo "Current remotes:"
-          git remote -v
           git remote set-url origin https://github.com/reuerendo/crengine
-          echo "Fetching custom fork..."
           git fetch origin
-          echo "Checking out test branch..."
           git checkout FETCH_HEAD
           git branch -D test 2>/dev/null || true
           git checkout -b test
