@@ -61,9 +61,20 @@ jobs:
           fi
           echo "Found crengine at: $CRENGINE_PATH"
           cd "$CRENGINE_PATH"
+          echo "Current remotes:"
+          git remote -v
+          echo "Changing remote URL..."
           git remote set-url origin https://github.com/reuerendo/crengine
+          echo "New remotes:"
+          git remote -v
+          echo "Fetching all branches..."
           git fetch origin
-          git checkout -B test origin/test
+          echo "Available remote branches:"
+          git branch -r
+          echo "Checking out test branch..."
+          git checkout FETCH_HEAD
+          git branch -D test 2>/dev/null || true
+          git checkout -b test
       
       - name: Build KOReader for PocketBook
         run: |
