@@ -41,7 +41,9 @@ jobs:
             gperf \
             help2man \
             libc6-dev-i386 \
+            libffi-dev \
             libncurses-dev \
+            libpcre2-dev \
             libsdl2-2.0-0 \
             libsdl2-dev \
             libtool \
@@ -53,10 +55,15 @@ jobs:
             patch \
             perl \
             pkg-config \
+            python3-pip \
             texinfo \
             unzip \
             wget \
             zlib1g:i386
+      
+      - name: Upgrade meson to latest version
+        run: |
+          python3 -m pip install --upgrade meson
       
       - name: Download and install PocketBook toolchain
         run: |
