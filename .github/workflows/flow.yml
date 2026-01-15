@@ -87,9 +87,11 @@ jobs:
           git config -f .gitmodules submodule.thirdparty/kpvcrlib/crengine.branch test
           
           git submodule sync thirdparty/kpvcrlib/crengine
-          git submodule update --init --remote thirdparty/kpvcrlib/crengine
+          git submodule update --init thirdparty/kpvcrlib/crengine
           
           cd thirdparty/kpvcrlib/crengine
+          git remote set-url origin https://github.com/reuerendo/crengine.git
+          git fetch origin test
           git checkout test
           
           cd ${{ github.workspace }}
