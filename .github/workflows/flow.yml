@@ -1,4 +1,4 @@
-name: Build KOReader
+name: Build KOReader for PocketBook
 
 on:
   push:
@@ -21,6 +21,7 @@ jobs:
       
       - name: Install build dependencies
         run: |
+          sudo dpkg --add-architecture i386
           sudo apt-get update
           sudo apt-get install -y \
             autoconf \
@@ -33,12 +34,16 @@ jobs:
             file \
             flex \
             gawk \
+            gcc-multilib \
+            g++-multilib \
             gettext \
             git \
             gperf \
             help2man \
+            libc6-dev-i386 \
             libncurses-dev \
             libsdl2-2.0-0 \
+            libsdl2-dev \
             libtool \
             libtool-bin \
             luarocks \
@@ -50,7 +55,8 @@ jobs:
             pkg-config \
             texinfo \
             unzip \
-            wget
+            wget \
+            zlib1g:i386
       
       - name: Download and install PocketBook toolchain
         run: |
