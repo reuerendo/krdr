@@ -94,8 +94,8 @@ jobs:
           git submodule update --init thirdparty/kpvcrlib/crengine
           cd thirdparty/kpvcrlib/crengine
           git remote set-url origin https://github.com/reuerendo/crengine.git
-          git fetch origin test-branch
-          git checkout test-branch
+          git fetch origin first-line
+          git checkout first-line
       
       - name: Build KOReader for PocketBook
         run: |
