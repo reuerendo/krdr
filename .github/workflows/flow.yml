@@ -1,4 +1,4 @@
-name: Build KOReader for PocketBook (Alternative Method)
+name: Build KOReader for PocketBook
 
 on:
   workflow_dispatch:
