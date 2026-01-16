@@ -76,6 +76,14 @@ jobs:
             -DMAX_IMAGE_SCALE_MUL=2 \
             -DENABLE_CHM=1 \
             -DENABLE_ANTIWORD=1 \
+            -DZLIB_FOUND=FALSE \
+            -DPNG_FOUND=FALSE \
+            -DJPEG_FOUND=FALSE \
+            -DFREETYPE_FOUND=FALSE \
+            -DHARFBUZZ_FOUND=FALSE \
+            -DFRIBIDI_FOUND=FALSE \
+            -DLIBUNIBREAK_FOUND=FALSE \
+            -DUTF8PROC_FOUND=FALSE \
             -DCMAKE_CXX_FLAGS_RELEASE:STRING="-fomit-frame-pointer -O1" \
             ..
       
