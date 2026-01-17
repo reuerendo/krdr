@@ -1,4 +1,4 @@
-name: Build KOReader for PocketBook
+name: Build KOReader first-line
 
 on:
   workflow_dispatch:
