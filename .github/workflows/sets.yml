@@ -1,0 +1,117 @@
+name: Build KOReader - sets
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-pocketbook:
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout KOReader repository
+        uses: actions/checkout@v4
+        with:
+          repository: koreader/koreader
+          submodules: false
+          fetch-depth: 1
+      
+      - name: Install build dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            bison \
+            build-essential \
+            ca-certificates \
+            cmake \
+            curl \
+            file \
+            flex \
+            gawk \
+            gcc-multilib \
+            g++-multilib \
+            gettext \
+            git \
+            gperf \
+            help2man \
+            libc6-dev-i386 \
+            libffi-dev \
+            libncurses-dev \
+            libpcre2-dev \
+            libsdl2-2.0-0 \
+            libsdl2-dev \
+            libtool \
+            libtool-bin \
+            luarocks \
+            meson \
+            nasm \
+            ninja-build \
+            patch \
+            perl \
+            pkg-config \
+            python3-pip \
+            texinfo \
+            unzip \
+            wget \
+            zlib1g:i386
+      
+      - name: Upgrade meson to latest version
+        run: |
+          python3 -m pip install --upgrade meson
+      
+      - name: Download and install PocketBook toolchain
+        run: |
+          cd $HOME
+          wget https://github.com/koreader/koxtoolchain/releases/download/2025.05/pocketbook.tar.gz
+          tar -xzf pocketbook.tar.gz
+      
+      - name: Setup toolchain environment
+        run: |
+          echo "$HOME/x-tools/arm-pocketbook-linux-gnueabi/bin" >> $GITHUB_PATH
+      
+      - name: Initialize all submodules except crengine
+        working-directory: ${{ github.workspace }}
+        run: |
+          git submodule init
+          git submodule update --init l10n
+          git submodule update --init platform/android/luajit-launcher
+          git submodule update --init platform/ubuntu-touch/ubuntu-touch-sdl
+          git submodule update --init resources/fonts
+          git submodule update --init test
+          git submodule update --init base
+          
+          cd base
+          git submodule init
+          
+          for submodule in $(git config --file .gitmodules --get-regexp path | awk '{ print $2 }'); do
+            if [[ "$submodule" != "thirdparty/kpvcrlib/crengine" ]]; then
+              git submodule update --init --recursive "$submodule"
+            fi
+          done
+          
+          git submodule update --init thirdparty/kpvcrlib/crengine
+          cd thirdparty/kpvcrlib/crengine
+          git remote set-url origin https://github.com/reuerendo/crengine.git
+          git fetch origin sets
+          git checkout sets
+      
+      - name: Build KOReader for PocketBook
+        run: |
+          ./kodev release pocketbook
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: koreader-pocketbook
+          path: koreader-pocketbook-*.zip
+          if-no-files-found: error
+      
+      - name: Create release on tags
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: koreader-pocketbook-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
