@@ -1,4 +1,4 @@
-name: Build KOReader - sets
+name: Build KOReader - weight
 
 on:
   workflow_dispatch:
