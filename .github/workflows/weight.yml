@@ -1,4 +1,4 @@
-name: Build KOReader - weight
+name: Build KOReader - firs-letter-without-dom-node
 
 on:
   workflow_dispatch:
@@ -94,8 +94,8 @@ jobs:
           git submodule update --init thirdparty/kpvcrlib/crengine
           cd thirdparty/kpvcrlib/crengine
           git remote set-url origin https://github.com/reuerendo/crengine.git
-          git fetch origin font-weight
-          git checkout font-weight
+          git fetch origin firs-letter-without-dom-node
+          git checkout firs-letter-without-dom-node
       
       - name: Build KOReader for PocketBook
         run: |
